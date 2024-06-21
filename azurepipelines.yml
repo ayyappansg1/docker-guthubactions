@@ -1,0 +1,91 @@
+trigger:
+  - main
+  - pipeline
+
+name: 0.0.$(rev:r)
+
+pool:
+  vmImage: 'windows-2019'
+
+
+jobs:
+  - job: 'Build'
+    timeoutInMinutes: 0
+    steps:
+      - task: Maven@3
+        displayName: 'Maven validate'
+        inputs:
+          mavenPomFile: '$(system.defaultworkingdirectory)/pom.xml'
+          goals: 'clean validate'
+      - task: Maven@3
+        displayName: 'Maven Test'
+        inputs:
+          mavenPomFile: '$(System.DefaultWorkingDirectory)/pom.xml'
+          goals: 'clean test'
+          options: '-Dgroups=Regression -DAPP_URL=https://core-uat.atlasbyelements.com/ -DBROWSER=CHROME'
+          publishJUnitResults: true
+          testResultsFiles: '**/TEST-*.xml'
+          testRunTitle: 'Core HR and T&A Automation Tests'
+          javaHomeOption: 'JDKVersion'
+          mavenVersionOption: 'Default'
+          mavenAuthenticateFeed: true
+          effectivePomSkip: false
+          sonarQubeRunAnalysis: false
+        timeoutInMinutes: 300
+        continueOnError: true
+      - task: PowerShell@2
+        displayName: "Generate Allure Report"
+        inputs:
+          targetType: 'inline'
+          script: |
+            # Write your PowerShell commands here.
+            iwr -useb get.scoop.sh -outfile 'install.ps1'
+            .\install.ps1 -RunAsAdmin
+            
+            scoop install allure
+            
+            allure generate
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+      - task: ArchiveFiles@2
+        displayName: 'Archive Files'
+        inputs:
+          rootFolderOrFile: '$(System.DefaultWorkingDirectory)/allure-report'
+          archiveFile: '$(Build.ArtifactStagingDirectory)/HCM-Test-Report.zip'
+        condition: succeededOrFailed()
+
+      - task: SendEmail@0
+        displayName: 'Send an email with subject HCM Module - Web Test - QA'
+        inputs:
+          To: 'ayyappang.cs@atlashxm.com,shahanab.contractor@elementsgs.com,shahzaiba.cs@atlashxm.com'
+         # To: 'ayyappang.cs@atlashxm.com'
+          From: 'azuredevops@atlashxm.com'
+          Subject: 'HCM UI test'
+          Body: |
+            Hello,
+            Web test Dashboard URL:
+            https://technology-internal.visualstudio.com/Atlas-HCM/_build/results?buildId=$(Build.BuildId)&view=ms.vss-test-web.build-test-results-tab
+          Attachment: '$(Build.ArtifactStagingDirectory)/HCM-Test-Report.zip'
+          SmtpServer: 'smtp.office365.com'
+          SmtpPort: '25'
+          SmtpUsername: 'azuredevops@atlashxm.com'
+          SmtpPassword: '$(PASSWORD)'
+          STARTTLS: true
+        condition: succeededOrFailed()
+
+      - task: CalromEmailReport@1
+        inputs:
+          sendMailConditionConfig: 'Always'
+          subject: '[{environmentStatus}] {passPercentage} WEB tests passed in HCM Module'
+          toAddress: 'ayyappang.cs@atlashxm.com;shahanab.contractor@elementsgs.com;shahzaiba.cs@atlashxm.com;'
+          #toAddress: 'ayyappang.cs@atlashxm.com;'
+          defaultDomain: 'atlashxm.com'
+          includeResultsStr: '1, 2'
+          groupTestResultsBy: 'run'
+          includeCommits: false
+          maxTestFailuresToShow: '30'
+          includeOthersInTotal: true
+          usePreviousEnvironment: false
+          enableTLS: true
+          smtpConnectionEndpoint: 'SMTPforQAreport'
+        condition: succeededOrFailed()

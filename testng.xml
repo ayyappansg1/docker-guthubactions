@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<suite name="Core HR and Time and Attendance Automation Tests" parallel="tests" verbose="10" >
+    <listeners>
+        <listener class-name="common.ExtentReportListener"/>
+    </listeners>
+    <test name="First Run">
+        <classes>
+            <class name="main.Timeandattendance.TimeoffPolicyListingPage" />
+            <!--<class name="main.Timeandattendance.PublicHolidayListingPage" />-->
+            <!--<class name="main.Timeandattendance.TimeTrackingPolicyListingPage" />-->
+        </classes>
+    </test>
+    <test name="Second Run">
+        <classes>
+            <!--<class name="main.Timeandattendance.TimeoffPolicyListingPage" />-->
+            <class name="main.Timeandattendance.PublicHolidayListingPage" />
+            <!--<class name="main.Timeandattendance.TimeTrackingPolicyListingPage" />-->
+        </classes>
+    </test>
+</suite>
